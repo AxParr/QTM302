@@ -1,0 +1,319 @@
+---
+title: "EDA Notebook: Indoctrination in Education "
+output: html_document
+date: "2026-07-27"
+author: "Aixmar Parra, Jane Lee, Nelly Rebollar Vergara"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction 
+
+The Varieties of Indoctrination (V-Indoc) dataset, introduced by Neundorf et al. (2023) through the V-Dem Institute at the University of Gothenburg, explores various political indoctrination policies. The dataset captures two central dimensions of indoctrination: its potential and its content. V-Indoc focuses on measuring various forms of political indoctrination through education and media. In addition to these measures, we placed these measures alongside each country's political regime type. For this reason we found this dataset useful for our research. Additionally, it is worth noting that the regime variable from the V-Dem dataset was merged with the V-Indoc datatset, which permits us to look at the regime types. 
+
+The following analysis focuses on understanding how indoctrination policies are seen in different countries. We are primarily interested in seeing how these levels varies across different regimes. For this reason we elected to focus our attention to the following set of variables and their correlation with the amount of indoctrinating content in educational textbooks. 
+
+The variable, Control over Educational Agents, measures the control that a regime has over teachers and teaching practices in classrooms. It is measured based on the strength of teacher autonomy and unions, as well as the hiring and firing of teachers. Patriotic Indoctrination Content in Education is another variable of interest as it focuses on the amount of patriotic content in a curriculum as well as the level of patriotic celebration in schools. The final variable of interest is, Centralized curriculum. This variable asks: to what extent does a national authority set the curriculum for schools? Together, these variables measure the control of the government over curricula, teachers, and the promotion of patriotic content in education. Additionally, the standardization of the first two measurements to fall on a scale between 0 and 1, permits for quicker analysis with less manual adjustments needed. Where a 0 represents Low and 1 High on the measures, we understand a lower value to represent less governmental influence on education policy. Additionally, Centralized curriculum is measured on a discrete scale from 0 to 4, with increasing govermental influence on curricula as the value increases. The scale goes from "¨None", "Some", "Mostly", and "Fully" respectively.
+
+While political science has extensively studied coercion as a tool of political control, far less attention has been paid to indoctrination, the deliberate use of education and media to cultivate voluntary compliance and loyalty among citizens.
+With this analysis we will explore the role played by educational policies in indoctrinating. Thus, we hope to provide insight into these behaviors.  
+
+
+
+## Preparing V-Indoc for Analysis
+We begin by loading the necessary packages and data for the analysis. Following this, we will do some data processing to ensure that we are able to select countries by differing regime types as well as exploring our variables of interest.
+
+
+```{r pressure, echo=FALSE}
+library(tidyverse)
+library(gt)
+library(DescTools)
+library(dplyr)
+
+library(readr)
+vindoc <- read_csv("C:/Users/andres/Downloads/vindoc_with_regime.csv")
+```
+
+### Data Cleaning and Sampling by Regime Type
+We first clean and shape our data for better readability as well as prepare our data for sampling by regime type. The intent here is to represent various different regimes in our analysis to measure the differences among the various regime types. This is necessary to ensure that any observed effects are not generalized when they may be exclusive to any certain type of regimes. Conversely, it also allows us to see what relationships may be unique to certain regime types.
+```{r}
+cleaned_vindoc <- vindoc %>%
+  select(country_name,
+         year,
+         historical_date,
+         regime = v2x_regime,
+         ctrl_ed_agents = v2xed_ed_ctag,
+         patriotic_ed = v2xed_ed_ptcon,
+         Ctrl_currclm = v2edcentcurrlm)
+# preferred sample size
+sample_size <- 5
+
+# sort based on regime, sample x amount of distinct countries from each regime
+# 0 = closed autocracy; 1 = electoral autocracy
+# 2 = electoral democracy; 3 = liberal democracy
+sample_closed_auto <- cleaned_vindoc %>%
+  filter(regime == 0) %>%
+  distinct(country_name, .keep_all = TRUE) %>%
+  slice_sample(n = sample_size)
+
+sample_electoral_auto <- cleaned_vindoc %>%
+  filter(regime == 1) %>%
+  distinct(country_name, .keep_all = TRUE) %>%
+  slice_sample(n = sample_size)
+
+sample_electoral_demo <- cleaned_vindoc %>%
+  filter(regime == 2) %>%
+  distinct(country_name, .keep_all = TRUE) %>%
+  slice_sample(n = sample_size)
+
+sample_liberal_demo <- cleaned_vindoc %>%
+  filter(regime == 3) %>%
+  distinct(country_name, .keep_all = TRUE) %>%
+  slice_sample(n = sample_size)
+
+# create a table of the selected countries
+country_table = data.frame(
+  Closed_Autocracy = sample_closed_auto$country_name,
+  Electoral_Autocracy = sample_electoral_auto$country_name,
+  Electoral_Democracy = sample_electoral_demo$country_name,
+  Liberal_Democracy = sample_liberal_demo$country_name
+)
+
+country_table %>%
+  gt()
+
+# select a chosen year
+chosen_year <- 2021
+
+# different regimes in the year chosen year
+closed_auto <- cleaned_vindoc %>%
+  filter(regime == 0 & year == chosen_year)
+
+electoral_auto <- cleaned_vindoc %>%
+  filter(regime == 1 & year == chosen_year)
+
+electoral_demo <- cleaned_vindoc %>%
+  filter(regime == 2 & year == chosen_year)
+
+liberal_demo <- cleaned_vindoc %>%
+  filter(regime == 3 & year == chosen_year)
+
+
+
+
+```
+
+### Exploring our Variables of Interest
+
+Before running any analysis, it is important to look at the shape and structure of the data to ensure that the analysis that we run is proper and statistically sound. For this reason, we run some simple statistics as well as visualize the data. We measure distributions and central tendencies to ensure that the data is fit for statistical analysis.
+```{r}
+summary(cleaned_vindoc$ctrl_ed_agents)
+summary(cleaned_vindoc$patriotic_ed)
+summary(cleaned_vindoc$Ctrl_currclm)
+```
+The standardized variable nature of the first 2 variables allow us to see rather centralized tendencies to the middle of the scoring range. Along with the quartile locations, we cannot state that the data is not relatively normal from these values alone. Visualizing the distribution of the variables will help better understand the true dristribution of variables.
+
+### Measures of Central Tendency for Electoral Autocracy
+```{r}
+mean(electoral_auto$ctrl_ed_agents, na.rm = TRUE)
+summary(electoral_auto$ctrl_ed_agents)
+
+mean(electoral_auto$patriotic_ed, na.rm = TRUE)
+summary(electoral_auto$patriotic_ed)
+
+mean(electoral_auto$Ctrl_currclm, na.rm = TRUE)
+summary(electoral_auto$Ctrl_currclm)
+```
+In this sample, we observe a bump up in all measures, pointing towards higher levels of control over agents of education and curricula. Additionally, the higher mean Centralized Curriculum score of 0.7621 versus the dataset mean of 0.2722 demonstrates higher levels of national authority control over the framework of curricula.
+
+
+### Measures of Central Tendency for Electoral Democracy 
+```{r}
+mean(electoral_demo$ctrl_ed_agents, na.rm = TRUE)
+summary(electoral_auto$ctrl_ed_agents)
+
+mean(electoral_demo$patriotic_ed, na.rm = TRUE)
+summary(electoral_demo$patriotic_ed)
+
+mean(electoral_demo$Ctrl_currclm, na.rm = TRUE)
+summary(electoral_demo$Ctrl_currclm)
+```
+In comparison to the Electoral Autocracies, we see Electoral Democracies register averages and medians below those of the aforementioned regime type.
+
+
+### Measures of Central Tendency for Closed Autocracies
+```{r}
+mean(closed_auto$ctrl_ed_agents, na.rm = TRUE)
+summary(closed_auto$ctrl_ed_agents)
+
+mean(closed_auto $patriotic_ed, na.rm = TRUE)
+summary(closed_auto$patriotic_ed)
+
+mean(closed_auto $Ctrl_currclm, na.rm = TRUE)
+summary(closed_auto$Ctrl_currclm)
+
+```
+Closed Autocracies have averages that are also above the dataset means and medians for the variables. However, the difference between the statistics here and the statistics of the electoral autocratic group do not show changes that we would deem dramatic. It is possible that the autocratic portion of the categorization carries the most effect.
+
+### Measures of Central Tendency for Liberal Democracies
+```{r}
+mean(liberal_demo$ctrl_ed_agents, na.rm = TRUE)
+summary(liberal_demo$ctrl_ed_agents)
+
+mean(liberal_demo$patriotic_ed, na.rm = TRUE)
+summary(liberal_demo$patriotic_ed)
+
+mean(liberal_demo$Ctrl_currclm, na.rm = TRUE)
+summary(liberal_demo$Ctrl_currclm)
+
+```
+Liberal Democracies show the lowest averages across all regime types. These values promote the idea that liberal government types value less indoctrinatng educational policies than nations with other regime types. 
+
+### Visualizing Distributions of our Variables of Interest 
+We begin by visualizing the distributions of our variables of interest.
+
+```{r}
+
+ ggplot(cleaned_vindoc, aes(x = ctrl_ed_agents)) +
+   geom_histogram(bins = 10, fill = "red", color = "white") +
+   labs(title = "Distribution of Control over Educational Agents", x = "Score", y = "Frequency")
+
+ ggplot(cleaned_vindoc, aes(x = patriotic_ed)) +
+   geom_histogram(bins = 10, fill = "lightblue", color = "white") +
+   labs(title = "Distribution of Patriotic Education Content", x = "Score", y = "Frequency")
+
+ ggplot(cleaned_vindoc, aes(x = Ctrl_currclm)) +
+   geom_histogram(bins = 10, fill = "forestgreen", color = "white") +
+   labs(title = "Distribution of Centralized Curriculum", x = "Score", y = "Frequency")
+ 
+```
+All 3 variables had very different distributions with ¨Distribution of Control over Educational Agents¨ having a rather flat distribution with a slight peak on the lower range. "Distribution of Patriotic Education Content" had a single peak with a slight tail to the left and "Distribution of Centralized Curriculum" had a heavy left tail with a strong concentration on the upper side. These distribution plots show us how the trends for these variables on global dataset play out. The variables are not set to be normally distributed across the entire dataset.
+
+
+### Visualizing Density Plots for Each Regime Type 
+Following this, we create density plots of control over educational agents for each regime type. The goal here is to visualize some of those premature observations that we made with the statistical summary above.
+```{r}
+ggplot(data = closed_auto, aes(x = ctrl_ed_agents)) +
+  geom_density(adjust = .45,
+               fill = 'tomato',
+               alpha = 0.75,
+               color = 'tomato4',
+               linewidth = 0.5) +
+  theme_minimal() +
+  labs(title = 'Closed Autocracy Control Over Educational Agents Density Distribution in Chosen Year', x = 'Control over Education Agents')
+
+# density plot of control over educational agents
+ggplot(data = electoral_auto, aes(x = ctrl_ed_agents)) +
+  geom_density(adjust = .45,
+               fill = 'salmon',
+               alpha = 0.75,
+               color = 'salmon4',
+               linewidth = 0.5) +
+  theme_minimal() +
+  labs(title = 'Electoral Autocracy Control Over Educational Agents Density Distribution in Chosen Year', x = 'Control over Education Agents')
+
+# density plot of control over educational agents
+ggplot(data = electoral_demo, aes(x = ctrl_ed_agents)) +
+  geom_density(adjust = .45,
+               fill = 'deepskyblue1',
+               alpha = 0.75,
+               color = 'deepskyblue4',
+               linewidth = 0.5) +
+  theme_minimal() +
+  labs(title = 'Electoral Democracy Control Over Educational Agents Density Distribution in Chosen Year', x = 'Control over Education Agents')
+
+# density plot of control over educational agents
+ggplot(data = liberal_demo, aes(x = ctrl_ed_agents)) +
+  geom_density(adjust = .45,
+               fill = 'lightskyblue',
+               alpha = 0.75,
+               color = 'lightskyblue4',
+               linewidth = 0.5) +
+  theme_minimal() +
+  labs(title = 'Liberal Democracy Control Over Educational Agents Density Distribution in Chosen Year', x = 'Control over Education Agents')
+
+```
+
+The most drastic observation comes from the quite significant gap in central tendencies between autocracies and democratic forms of government. Closed autocracies heavily clustered on the upper side of measures while liberal democracies heavily clustered on the lower side of the scale. Electoral democracies and electoral autocracies filled the gap with increasing tendencies towards each other, The strongest observation here is the promise of there being a significant difference between autocratic and democratic forms of government.
+
+
+## Statistical Testing
+
+We will now be conducting three different statistical tests to examine the relationship between a country's political regime type and its control over the educational system. It will also explore whether the control correlates with the patriotic content taught in schools, which can be seen as an indoctrination level to an extent. The idea behind the indoctrination level is as follows: if an authoritarian government is trying to stay in power, one of the easiest ways to do this long-term is by controlling what citizens are taught. Thus, by having schools shape how their students think about their country and their government from a really young age can be seen as indoctrinating. In theory, democracies are intended to have more independence built into their education systems, with less top-down political interference. Hence, we wanted to see if the data would support this idea, or if this concept is more complex than one may have initially inferred. 
+
+The three tests will consist of Pearson correlation, a one-way ANOVA, and a Welch's t-test. We will discuss these tests as well. 
+
+```{r}
+## 1.
+cor.test(cleaned_vindoc$ctrl_ed_agents, cleaned_vindoc$patriotic_ed,
+          use = "complete.obs", method = "pearson")
+
+## 2.
+combined_regimes <- bind_rows(
+  closed_auto      %>% mutate(regime_type = "Closed Autocracy"),
+  electoral_auto   %>% mutate(regime_type = "Electoral Autocracy"),
+  electoral_demo   %>% mutate(regime_type = "Electoral Democracy"),
+  liberal_demo     %>% mutate(regime_type = "Liberal Democracy")
+)
+
+anova_model <- aov(patriotic_ed ~ regime_type, data = combined_regimes)
+summary(anova_model)
+
+## 3.
+t.test(closed_auto$ctrl_ed_agents, liberal_demo$ctrl_ed_agents,
+       alternative = "two.sided", var.equal = FALSE)
+
+```
+## Results 
+
+The following includes our analysis of of whether our findings support our initial thoughts. 
+
+### Test 1: Pearson Correlation Between Control and Patriotic Content
+
+We first wanted to know if there is a relationship between how much control a government has over educational agents, which consist of teachers and school administrators, and how patriotic the content in schools is. To test this, we used a Pearson correlation, which is one of the most standard ways to measure whether two continuous variables move together in a straight-line pattern and are correlated.
+
+The result was r = 0.431, and this was based on 10,678 degrees of freedom, which indicates that the test ran on many observations. The p-value came back as p<0.001, which is very close to zero, and the 95% confidence interval for the correlation was between 0.416 and 0.447.
+
+An r value of 0.431 is considered a moderate positive correlation. Thus, it is not weak, but it is also nowhere close to the perfect correlation value of 1.0. As control over educational agents goes up, patriotic educational content also tends to go up, but the relationship is not super tight. If we square the correlation coefficient to get R-squared, we get about 0.186, which means that only around 18.6% of the variation in patriotic content can be explained by control over educational agents. This means that over 80% of the variation comes from noise. Such as factors like a country's history of war, its colonial past, cultural factors, or other noise that was not factored into the dataset. 
+One thing worth mentioning is that the p-value in this case can be considered meaningless on its own. With over 10,000 data points, almost any relationship, including weak ones, can come back as statistically significant. Since there is a large amount of data, the small effects will be detectable. Consequently, when the p-value is low, the correlation coefficient (0.431) becomes the more significant figure, showcasing the actual strength of the association rather than just its existence.
+
+### Test 2: One-Way ANOVA to see if Regime Type Will Affect Control Over Education
+
+The second test we ran was a one-way ANOVA, which we used to compare whether the average value of control over educational agents was different depending on which of the four regime types a country falls into: closed autocracy, electoral autocracy, electoral democracy, or liberal democracy.
+
+The ANOVA gave us an F-statistic of F (3, 148) = 16.92, with a p-value of p<0.001, thus indicating a very small p-value as in our first test. The degrees of freedom are 3 for the regime type of groups and 148 for the residual/error term. This tells us that the test was running using country-level averages, rather than every single country-year observation. We mention this because this can imply that the test is comparing countries to each other, rather than comparing individual years within the same country.
+
+The F-statistic being this large and in combination with a very small p-value tells us that regime type really does matter when explaining the differences in educational control. Hence, an ANOVA test like the one we conducted may only provide that a difference exists somewhere among the four groups, as it does not tell one exactly in which pairs of regime types actually differ from each other. We bring into question whether electoral autocracy differs significantly from electoral democracy. We can also question if the two types of autocracies are statistically similar to each other, with the real gap only showing up between the extremes in closed autocracy vs.liberal democracy. 
+
+### Test 3: Welch's T-Test on Closed Autocracies vs. Liberal Democracies
+
+The third test was run with the purpose of comparing the most extreme regime types. Thus, we looked at closed autocracies, which can be seen as the most controlling regime type, versus liberal democracies, which can be seen as the opposite. We were strongly interested in creating this comparison, as we wanted to see if authoritarian regimes can utilize education as a control mechanism. Hence, we would expect to see the biggest gap when comparing the two. 
+
+The average ctrl_ed_agents score for closed autocracies was 0.685, while liberal democracies averaged 0.183. This is a difference of about 0.50 on a scale that runs from 0 to about 1, which is a fairly large gap when we think about it in percentage terms. This means that closed autocracies are averaging almost four times as much control as liberal democracies.
+
+The reason why we prompted a Welch's t-test is that we do not need to assume that both groups have equal variance, while the standard t-test does require this. Hence, it was a safer choice as we are not certain about this assumption. 
+
+The results came back as t (32.89) = 8.286, p<0.001, with a 95% confidence interval for the difference in means of [0.379, 0.626]. The degrees of freedom (32.89) are not a whole number, since it adjusts the degrees of freedom based on how different the variances are between the two groups. A t-statistic of 8.286 is quite large, implying that this difference is extremely unlikely to be explained by random noise. 
+
+### In General 
+
+The following three tests can attest to a consistent result. While they each look into answering a different question, we can see that there is a correlation showcased. As the correlation test demonstrates that when a government has more control over who teaches and runs schools, the content in these schools tends to lean more patriotic. We recognize that this relationship is moderate and that there could be other explanations for this. The ANOVA showcased that the regime type by itself explains about a quarter of the total variation in how much control governments have over education, which is a genuinely large effect for one variable in a social science context. Furthermore, the t-test aligns with the correlation, indicating a massive and statistically significant divergence in educational control when comparing the most authoritarian and democratic regimes.
+
+We want to be careful and avoid over-claiming what this data is indicating, as none of these tests can actually tell us anything about causation. While it is possible that transitioning into an authoritarian regime style can cause a government to seize more control over education, it is also possible that countries that already have really centralized and a controlled education system will find it easier to slide towards authoritarianism in the first place. Since the population has already been shaped to be more accepting of a top-down control model. Furthermore, another factor can be a country's colonial history or how much capacity it has to build powerful institutions in the first place; that is, driving both things at once without one causing the other directly.
+
+We would also like to mention some practical limitations during our tests. All three tests dropped observations that had missing data. We assume that a possibility for this is that closed autocracies can provide less collectable and reliable data, which could bias the results. Therfore becoming harder to detect. The ANOVA test also appears to have used one average value per country, rather than tracking each country over time, which means it's really comparing countries to each other at a single time, rather than showing how control over education might rise or fall within the same country as its regime changes.
+
+## Conclusion
+
+The analysis suggests a meaningful connection between regime type and a government's control over its education system, which then connects to increased patriotic content in schools. The gap between closed autocracies and liberal democracies in particular stood out to us, as it was the clearest and most convincing part of the analysis. The effect size at this portion was both large and extremely statistically significant. Thus, our main takeaway is that this data shows a strong pattern in understanding indoctrination behaviors that a certain regime type may implement. We would suggest a more rigorous study that would track individual countries over time as they transition between regime types to see whether control over education is a cause of authoritarianism, a consequence of it, or if a confounding variable affects both.
+
+## References 
+
+Coppedge, M., Gerring, J., Knutsen, C. H., Lindberg, S. I., Teorell, J., Alizada, N., Gastaldi, L., Hindle, G., Pernes, J., von Römer, J., Tzelgov, E., Wang, Y., & Wilson, S. (2022). V-Dem codebook v12. Varieties of Democracy (V-Dem) Project.
+
+Neundorf, A., Nazrullaeva, E., Northmore-Ball, K., Tertytchnaya, K., Kim, W., Benavot, A., Bromley, P., Knutsen, C. H., Lutscher, P., Marquardt, K., Paglayan, A., Pemstein, D., Seim, B., & Rydén, O. (2023). Varieties of Political Indoctrination in Education and the Media (V-Indoc) Dataset V1 [Data set]. DEMED Project. https://doi.org/10.5525/gla.researchdata.1397
+
+
+
